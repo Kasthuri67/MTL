@@ -18,7 +18,7 @@ snowflake_options = {
     "sfSchema": 'MTL_BRONZE',
     "sfRole": 'ACCOUNTADMIN',
     "sfUser": 'kasthuri',
-    "sfPassword": 'FlyHigh1!',
+    "sfPassword": 'temptempo',
     "error_on_column_count_mismatch": 'false',
 }
 
