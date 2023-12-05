@@ -1,0 +1,69 @@
+-- Create a stored procedure - FACT_ORDER_INSERT
+CREATE OR REPLACE PROCEDURE FACT_ORDER_FULLLOAD()
+RETURNS VARCHAR
+LANGUAGE JAVASCRIPT
+AS
+$$
+try {
+    var command = `
+        INSERT INTO MTL_DEV_DB.TEST.GL_ORDERDETAILS_FS1(
+            CustomerID, 
+            COMPANY_ID,
+            PRODUCT_ID,
+            PLANT_ID,
+            --EMPLOYEE_ID,
+            DATE_ID,
+            INVOICE_NO, 
+            INVOICE_DATE, 
+            CSP_YES_NO, 
+            TYPE, 
+            UOM, 
+            QUANTITY, 
+            KGS,
+            QTY_IN_NOS,
+            QTY_IN_MT
+            ) 
+        SELECT 
+            CUS.CustomerID, 
+            COM.COMPANY_ID,
+            PROD.PRODUCT_ID,
+            PLNT.PLANT_ID,
+            --EMP.EMPLOYEE_ID,
+            DATE.DATE_ID,
+            ORDERS.INVOICE_NO, 
+            ORDERS.INVOICE_DATE, 
+            ORDERS.CSP_YES_NO, 
+            ORDERS.TYPE, 
+            ORDERS.UOM, 
+            ORDERS.QUANTITY, 
+            ORDERS.KGS, 
+            ORDERS.QUANTITY/10000,
+            ORDERS.KGS/1000
+            
+            FROM MTL_DEV_DB.MTL_SILVER.SL_ORDERDETAILS ORDERS
+            INNER JOIN
+                MTL_DEV_DB.MTL_SILVER.SL_PRODUCT PROD ON ORDERS.Product_Group_Code = PROD.Product_Group_Code
+            INNER JOIN
+                MTL_DEV_DB.MTL_GOLD.DIM_DATE DATE ON ORDERS.INVOICE_DATE = TO_DATE(DATE.FULLDATE)
+            LEFT JOIN
+                MTL_DEV_DB.MTL_SILVER.SL_CUSTOMER CUS ON ORDERS.Customer_No = CUS.Customer_No
+            LEFT JOIN
+                MTL_DEV_DB.MTL_SILVER.SL_COMPANY COM ON ORDERS.Company_Name = COM.Company_Name
+            LEFT JOIN
+                MTL_DEV_DB.MTL_SILVER.SL_PLANT PLNT ON ORDERS.Company_Name = PLNT.Company_Name;
+            -- INNER JOIN
+            --     MTL_DEV_DB.MTL_SILVER.SL_EMPLOYEE EMP ON ORDERS.Customer_No = EMP.Customer_No
+            
+                `;
+
+    var cmd_dict = { sqlText: command };
+    var stmt = snowflake.createStatement(cmd_dict);
+    var rs = stmt.execute();
+    return 'success';
+} catch (err) {
+    return 'Error: ' + err.message;
+}
+$$;
+
+
+call fact_order_insert();

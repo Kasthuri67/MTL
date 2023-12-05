@@ -1,0 +1,108 @@
+CREATE OR REPLACE PROCEDURE FACT_ORDER_SCD1()
+RETURNS VARCHAR
+LANGUAGE JAVASCRIPT
+AS
+$$
+try {
+    var command = `
+       MERGE INTO MTL_DEV_DB.TEST.GL_ORDERDETAILS_FS1 AS target
+        USING (
+           SELECT 
+                CUS.CUSTOMERID, 
+                COM.COMPANY_ID,
+                PROD.PRODUCT_ID,
+                PLNT.PLANT_ID,
+                --EMP.EMPLOYEE_ID,
+                DATE.DATE_ID,
+                ORDERS.INVOICE_NO, 
+                ORDERS.INVOICE_DATE, 
+                ORDERS.CSP_YES_NO, 
+                ORDERS.TYPE, 
+                ORDERS.UOM, 
+                ORDERS.QUANTITY, 
+                ORDERS.KGS, 
+                ORDERS.QUANTITY/10000 AS QTY_IN_NOS,
+                ORDERS.KGS/1000 AS QTY_IN_MT
+                
+                FROM MTL_DEV_DB.MTL_SILVER.SL_ORDERDETAILS ORDERS            
+                INNER JOIN
+                    MTL_DEV_DB.MTL_SILVER.SL_PRODUCT PROD ON ORDERS.Product_Group_Code = PROD.Product_Group_Code
+                INNER JOIN
+                    MTL_DEV_DB.MTL_GOLD.DIM_DATE DATE ON ORDERS.INVOICE_DATE = TO_DATE(DATE.FULLDATE)
+                LEFT JOIN
+                    MTL_DEV_DB.MTL_SILVER.SL_CUSTOMER CUS ON ORDERS.Customer_No = CUS.Customer_No
+                LEFT JOIN
+                    MTL_DEV_DB.MTL_SILVER.SL_COMPANY COM ON ORDERS.Company_Name = COM.Company_Name
+                LEFT JOIN
+                    MTL_DEV_DB.MTL_SILVER.SL_PLANT PLNT ON ORDERS.Company_Name = PLNT.Company_Name
+                -- INNER JOIN
+                --     MTL_DEV_DB.MTL_SILVER.SL_EMPLOYEE EMP ON ORDERS.Customer_No = EMP.Customer_No
+
+               
+        ) AS source
+         ON HASH (SOURCE.INVOICE_NO, SOURCE.PRODUCT_ID) = 
+            HASH (TARGET.INVOICE_NO, TARGET.PRODUCT_ID)
+            
+        WHEN MATCHED THEN 
+            UPDATE SET
+                target.CustomerID = source.CUSTOMERID,
+                target.COMPANY_ID = source.COMPANY_ID,
+                target.PRODUCT_ID = source.PRODUCT_ID,
+                target.PLANT_ID = source.PLANT_ID,
+                --target.EMPLOYEE_ID = source.EMPLOYEE_ID,
+                target.DATE_ID = source.DATE_ID,
+                target.INVOICE_DATE = source.INVOICE_DATE,
+                target.CSP_YES_NO = source.CSP_YES_NO,
+                target.TYPE = source.TYPE,
+                target.UOM = source.UOM,
+                target.QUANTITY = source.QUANTITY,
+                target.KGS = source.KGS,
+                target.QTY_IN_NOS = source.QTY_IN_NOS,
+                target.QTY_IN_MT = source.QTY_IN_MT
+
+        
+        WHEN NOT MATCHED THEN
+            INSERT (
+                CustomerID,
+                COMPANY_ID,
+                PRODUCT_ID,
+                PLANT_ID,
+                --EMPLOYEE_ID,
+                DATE_ID,
+                INVOICE_NO, 
+                INVOICE_DATE, 
+                CSP_YES_NO, 
+                TYPE, 
+                UOM, 
+                QUANTITY, 
+                KGS,
+                QTY_IN_NOS,
+                QTY_IN_MT
+            )
+            VALUES (
+                source.CUSTOMERID,
+                source.COMPANY_ID,
+                source.PRODUCT_ID,
+                source.PLANT_ID,
+                --source.EMPLOYEE_ID,
+                source.DATE_ID,
+                source.INVOICE_NO, 
+                source.INVOICE_DATE, 
+                source.CSP_YES_NO, 
+                source.TYPE, 
+                source.UOM, 
+                source.QUANTITY, 
+                source.KGS,
+                source.QTY_IN_NOS,
+                source.QTY_IN_MT
+            );
+    `;
+
+    var cmd_dict = { sqlText: command };
+    var stmt = snowflake.createStatement(cmd_dict);
+    var rs = stmt.execute();
+    return 'success';
+} catch (err) {
+    return 'Error: ' + err.message;
+}
+$$;
