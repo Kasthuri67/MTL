@@ -1,7 +1,7 @@
 --version 1
 create or replace task all_data_changes
     warehouse = COMPUTE_WH
-    schedule = '1440 MINUTE'
+    schedule = 'using cron 30 18-18 * * * UTC'
     when SYSTEM$STREAM_HAS_DATA('ORDER_STREAMS')
 as
 merge into sl_orderdetails slo
@@ -68,7 +68,7 @@ using(with cte_stream as (
 
 CREATE OR REPLACE TASK TK_BZ_SL_ORDER
     WAREHOUSE = MTL_DEV_WH
-    SCHEDULE = '1440 MINUTE'
+    SCHEDULE = 'using cron 30 18-18 * * * UTC'
 AS
 INSERT INTO SL_ORDERDETAILS (--MTL_DEV_DB.MTL_SILVER.SL_ORDERDETAILS (
     CUSTOMER_NO,
